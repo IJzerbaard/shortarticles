@@ -13,7 +13,7 @@ In this article I just want to give the reader some of the flavour of and intuit
 
 Of course, the standard Huffman tree is a bitwise trie.
 Bit-by-bit decoding directly (though naively) uses that fact.
-It also immediatly suggests a whole family of alternative decoding strategies: using higher degree (and thus shallower) tries.
+It also immediately suggests a whole family of alternative decoding strategies: using higher degree (and thus shallower) tries.
 
 Suppose the original Huffman tree was a perfect binary tree of height 8 (256 leaves, 255 internal nodes).
 A group of three binary nodes, a parent and its two children, represents two successive choices both based on a single bit.
@@ -33,7 +33,7 @@ Below, the symbol `A` is too shallow and therefore duplicated. It still only cor
 
 That is just a way of thinking about what the decoding table means, not how the table would be created in practice.
 Equivalently, one can take every `symbol <-> code` mapping and write the corresponding entries into every slot of the decoding table that has an index that *starts with* the `code`.
-This is easily done by taking the `code` and padding it by every possible bit pattern of the remainding length, thereby mapping a code of length L to 2<sup>MAX_CODE_LENGTH - L</sup> slots in the table.
+This is easily done by taking the `code` and padding it by every possible bit pattern of the remaining length, thereby mapping a code of length L to 2<sup>MAX_CODE_LENGTH - L</sup> slots in the table.
 So in the above example, the final table could be created directly by:
 
  - writing `B,2` into `table[00]`
@@ -75,6 +75,7 @@ A faster (though not guaranteed optimal) approach is heuristically redistributin
 Every code of length L corresponds to 2<sup>MAX_CODE_LENGTH - L</sup> slots of the decoding table, the sum of that over all lengths must not exceed the size of the table.
 A set of lengths can be made valid by iteratively choosing the longest code that can be lengthened and lengthening it, until the set of lengths is valid.
 That method can overshoot the target, there are more advanced algorithms that try to get closer to using 2<sup>MAX_CODE_LENGTH</sup> table slots.
+Once a valid set of code lengths has been found, [canonical Huffman codes](https://en.wikipedia.org/wiki/Canonical_Huffman_code) of those lengths can be generated with a simple algorithm.
 
 The lengths can be initially estimated based on the logarithms of the symbol probabilities, so no tree building needs to be done to construct the set of lengths.
 So while Huffman coding is conceptually founded on concept of the Huffman tree, in practice neither the encoder nor the decoder need to build that tree.
