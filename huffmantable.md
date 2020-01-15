@@ -6,14 +6,14 @@ Most of them focus on two things,
  - constructing Huffman codes by building a Huffman tree,
  - bit-by-bit decoding while traversing that tree.
 
-I don't think articles like that are *bad*, but they leave out some key concepts that are interesting and important for practical applications.
-In this article I just want to give the reader some of the flavour of and intuition behind basic table based decoding, not discuss advanced techniques.
+That is fine, introduction-level articles should exist. On the other end of the difficulty spectrum, there are academic papers about the theory behind efficient Huffman decoding and also less-formal cryptic notes written by compression experts on low-level implementation details of fast Huffman decoders. There is not so much in the middle.
+This article is supposed to be in the middle, giving the reader some of the flavour of and intuition behind basic table based decoding, without immediately diving into the deep end.
 
 ### The standard Huffman tree is a bitwise trie
 
 Of course, the standard Huffman tree is a bitwise trie.
 Bit-by-bit decoding directly (though naively) uses that fact.
-It also immediately suggests a whole family of alternative decoding strategies: using higher degree (and thus shallower) tries.
+It also suggests a whole family of alternative decoding strategies: using higher degree (and thus shallower) tries.
 
 Suppose the original Huffman tree was a perfect binary tree of height 8 (256 leaves, 255 internal nodes).
 A group of three binary nodes, a parent and its two children, represents two successive choices both based on a single bit.
@@ -41,37 +41,20 @@ So in the above example, the final table could be created directly by:
  - writing `A,1` into both `table[10]` and `table[11]`, where the left `1` is the code corresponding to the `A` symbol, and the right bit is the padding.
 
 In general there would be, for every code of length L, a loop from `0` up to but excluding `1 << (MAX_CODE_LENGTH - L)` which generates all the required padding bit strings in sequence.
-So the table building procedure is just two nested loops that fill the table, no tree needs to be built.
+No tree is involved.
 
-The decoding loop itself can be largely symmetric with the encoding loop, so keeping a bit buffer (held in an integer) filled with at least MAX_CODE_LENGTH bits, reading data as needed.
-For example (not intended to be runnable),
+The decoding procedure is conceptually simple: 
+- read `MAX_CODE_LENGTH` bits into a `buffer` from the input at the current position (not byte-aligned),
+- find `(symbol, length)` pair simply with `table[buffer]`,
+- advance the position in the input by `length`. 
 
-    uint64_t buf = 0;
-    int k = 0;
-    while (true) {
-        if (k < MAX_CODE_LENGTH) {
-            while (k <= 56) {
-                buf |= (uint64_t)readByte() << (56 - k);
-                k += 8;
-            }
-        }
-        struct sym s = decode[buf >> (64 - MAX_CODE_LENGTH)];
-        // use s.symbol, decided whether to break from loop
-        k -= s.length;
-        buf <<= s.length;
-    }
-
-There is the slight complication that `readByte` will still be called a couple of times when the stream has ended, which could be avoided by setting `k` to a high value after reading the last byte, or by padding the input.
-
-This is not the most efficient decoding loop possible, but this approach delivers at least reasonable performance, unlike bit-by-bit decoding which is just hopeless.
-
-### Length-limited codes
+### Constructing length-limited codes
 
 This style of table based decoding requires a table with 2<sup>MAX_CODE_LENGTH</sup> entries, making it important to ensure a reasonable maximum code length.
 Building a Huffman tree does not in general guarantee that the longest code is no longer than your chosen maximum code length.
 Finding an optimal set of codes given a constrained maximum length can be done using the package-merge algorithm, which is [the approach Zopfli takes](https://github.com/google/zopfli/blob/master/src/zopfli/katajainen.c).
 
-A faster (though not guaranteed optimal) approach is heuristically redistributing some bits, while being careful to keep the set of lengths valid overall.
+A faster (not guaranteed optimal, but "good enough" for many purposes) approach is heuristically redistributing some bits, while being careful to keep the set of lengths valid overall.
 Every code of length L corresponds to 2<sup>MAX_CODE_LENGTH - L</sup> slots of the decoding table, the sum of that over all lengths must not exceed the size of the table.
 A set of lengths can be made valid by iteratively choosing the longest code that can be lengthened and lengthening it, until the set of lengths is valid.
 That method can overshoot the target, there are more advanced algorithms that try to get closer to using 2<sup>MAX_CODE_LENGTH</sup> table slots.
